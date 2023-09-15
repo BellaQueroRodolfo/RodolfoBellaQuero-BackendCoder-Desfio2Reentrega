@@ -1,55 +1,62 @@
-const ProductManager = require('./src/productManager');
+const fs = require('fs');
 const path = require('path');
-const productManager = new ProductManager('./data/products.json');
-async function exampleUsage() {
-  const product1 = await productManager.addProduct({
-    title: 'Plant 1',
-    description: 'Beautiful indoor plant',
-    price: 29.99,
-    thumbnail: path.join(__dirname, 'images', 'img1.webp'),
-    code: 'PLT001',
-    stock: 10,
-  });
 
-  const product2 = await productManager.addProduct({
-    title: 'Plant 2',
-    description: 'Exotic outdoor plant',
-    price: 39.99,
-    thumbnail: path.join(__dirname, 'images', 'img2.webp'),
-    code: 'PLT002',
-    stock: 15,
-  });
+class ProductManager {
+  constructor(filePath) {
+    this.path = filePath;
+  }
 
-  const product3 = await productManager.addProduct({
-    title: 'Plant 3',
-    description: 'Succulent plant',
-    price: 19.99,
-    thumbnail: path.join(__dirname, 'images', 'img3.webp'),
-    code: 'PLT003',
-    stock: 20,
-  });
+  async addProduct(product) {
+    const products = await this.getProducts();
+    const newProduct = {
+      ...product,
+      id: products.length + 1,
+    };
+    products.push(newProduct);
+    await this.saveProducts(products);
+    return newProduct;
+  }
 
-  const product4 = await productManager.addProduct({
-    title: 'Plant 4',
-    description: 'Colorful flowers',
-    price: 49.99,
-    thumbnail: path.join(__dirname, 'images', 'img4.jpg'),
-    code: 'PLT004',
-    stock: 12,
-  });
+  async getProducts() {
+    try {
+      const data = await fs.promises.readFile(this.path, 'utf-8');
+      return JSON.parse(data);
+    } catch (error) {
+      return [];
+    }
+  }
 
-  console.log('Added Products:', product1, product2, product3, product4);
-  const allProducts = await productManager.getProducts();
-  console.log('All Products:', allProducts);
-  const productId = 1; 
-  const productById = await productManager.getProductById(productId);
-  console.log('Product by ID:', productById);
-  const updatedProduct = await productManager.updateProduct(productId, {
-    title: 'Updated Plant 1',
-    price: 39.99,
-  });
-  console.log('Updated Product:', updatedProduct);
+  async getProductById(id) {
+    const products = await this.getProducts();
+    return products.find((product) => product.id === id);
+  }
 
+  async updateProduct(id, updatedProduct) {
+    const products = await this.getProducts();
+    const index = products.findIndex((product) => product.id === id);
+    if (index !== -1) {
+      products[index] = {
+        ...updatedProduct,
+        id: id, // Ensure the ID remains the same
+      };
+      await this.saveProducts(products);
+      return products[index];
+    }
+    return null;
+  }
+
+  async deleteProduct(id) {
+    const products = await this.getProducts();
+    const index = products.findIndex((product) => product.id === id);
+    if (index !== -1) {
+      products.splice(index, 1);
+      await this.saveProducts(products);
+    }
+  }
+
+  async saveProducts(products) {
+    await fs.promises.writeFile(this.path, JSON.stringify(products, null, 2));
+  }
 }
 
-exampleUsage();
+module.exports = ProductManager;
